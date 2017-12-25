@@ -1,0 +1,9 @@
+{
+	"name": "revserver",
+	"authors": [
+		"theoldmoon0602"
+	],
+	"description": "reversi battle board",
+	"copyright": "Copyright © 2017, theoldmoon0602",
+	"license": "MIT"
+}
