@@ -3,6 +3,13 @@ import std.stdio;
 import std.json;
 import util;
 
+class ReversiException : Exception
+{
+    this(string msg, string file = __FILE__, size_t line = __LINE__) {
+        super(msg, file, line);
+    }
+}
+
 /// User
 class User {
 private:
@@ -19,14 +26,14 @@ public:
 
 	/**
 	 * Register new user with username and password
-     * Throws: Exception on username is not unique or username or password is empty
+     * Throws: ReversiException on username is not unique or username or password is empty
      */
 	static void register(string username, string password) {
 		if (username.length == 0 || password.length == 0) {
-			throw new Exception("(username > 0) && (password > 0)");
+			throw new ReversiException("(username > 0) && (password > 0)");
 		}
 		if (username in users) {
-			throw new Exception("username already used");
+			throw new ReversiException("username already used");
 		}
 		auto user = new User();
 		user.username = username;
@@ -38,14 +45,14 @@ public:
 
 	/**
      * login by username and password
-	 * Throws: Exception on failed to login
+	 * Throws: ReversiException on failed to login
      */
 	static User login(Connection conn, string username, string password) {
 		if (username !in users || users[username].password != password) {
-			throw new Exception("login failed");
+			throw new ReversiException("login failed");
 		}
 		if (username in actives) {
-			throw new Exception("you already logged in");
+			throw new ReversiException("you already logged in");
 		}
 		auto user = users[username];
 		user.connection = conn;
@@ -63,26 +70,88 @@ public:
 /// TCP Connection
 class Connection {
 public:
+	/// Connection status
+	enum State {
+		START,
+		OTHERWISE,
+	}
+	State status;  /// status
 	Socket socket;  /// Socket
+	User user;     /// connection user;
 
 	/// Initializer
 	this (Socket socket) {
 		this.socket = socket;
+		this.user = null;
+		this.status = State.OTHERWISE;
 	}
 
 	/// called when connection has been started
-	void start() {
-		writeln("start");
+	void started() {
+		trans(State.START);
 	}
 
 	/// called when connection has been ended
-	void close() {
+	void closed() {
 		writeln("end");
 	}
 
 	/// called when socket received
-	void recv(JSONValue data) {
-		writeln("recv: ", data);
+	void recved(JSONValue data) {
+		try {
+			with (State) {
+				final switch(status) {
+				case START:
+					auto username = data["userinfo"]["username"].str();
+					auto password = data["userinfo"]["password"].str();
+					// login
+					if (data["action"].str() == "login") {
+						this.user = User.login(this, username, password);
+					}
+					// register and login
+					else if (data["action"].str() == "register") {
+						User.register(username, password);
+						this.user = User.login(this, username, password);
+					}
+					// send result
+					JSONValue json;
+					json["result"] = "true";
+					socket.emitln(json);
+					trans(OTHERWISE);
+					break;
+				case OTHERWISE:
+					break;
+				}
+			}
+		}
+		catch (Exception e) {
+			JSONValue json;
+			json["result"] = "false";
+			json["msg"] = e.msg;
+			socket.emitln(json);
+		}
+	}
+
+	/// close connection actively
+	void close() {
+		socket.close();
+	}
+
+
+	/// transmit status and make ouput
+	void trans(State status) {
+		with (State) {
+			final switch(status) {
+			case START:
+				JSONValue json;
+				json["result"] = "true";
+				socket.emitln(json);
+				break;
+			case OTHERWISE:
+				break;
+			}
+		}
+		this.status = status;
 	}
 }
 
@@ -122,7 +191,7 @@ void main()
 
 		if (rset.isSet(server)) {
 			auto conn = new Connection(server.accept());
-			conn.start();
+			conn.started();
 			conns ~= conn;
 		}
 
@@ -144,13 +213,13 @@ void main()
 				}
 				try {
 					auto json = parseJSON(buf.asUTF.strip);
-					conn.recv(json);
+					conn.recved(json);
 				}
 				catch (JSONException) {}
 			}
 
 			if (! conn.socket.isAlive) {
-				conn.close();
+				conn.closed();
 				rmlist ~= i;
 			}
 		}
