@@ -67,12 +67,14 @@ public:
 	}
 }
 
+
 /// TCP Connection
 class Connection {
 public:
 	/// Connection status
 	enum State {
 		START,
+		SEARCH,
 		OTHERWISE,
 	}
 	State status;  /// status
@@ -88,7 +90,8 @@ public:
 
 	/// called when connection has been started
 	void started() {
-		trans(State.START);
+		socket.emitln(JSONValue(["result": "true"]));
+		this.status = State.START;
 	}
 
 	/// called when connection has been ended
@@ -113,12 +116,8 @@ public:
 						User.register(username, password);
 						this.user = User.login(this, username, password);
 					}
-					// send result
-					JSONValue json;
-					json["result"] = "true";
-					socket.emitln(json);
-					trans(OTHERWISE);
 					break;
+				case SEARCH:
 				case OTHERWISE:
 					break;
 				}
@@ -135,23 +134,6 @@ public:
 	/// close connection actively
 	void close() {
 		socket.close();
-	}
-
-
-	/// transmit status and make ouput
-	void trans(State status) {
-		with (State) {
-			final switch(status) {
-			case START:
-				JSONValue json;
-				json["result"] = "true";
-				socket.emitln(json);
-				break;
-			case OTHERWISE:
-				break;
-			}
-		}
-		this.status = status;
 	}
 }
 
