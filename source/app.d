@@ -1,5 +1,6 @@
 import std.socket;
 import std.stdio;
+import std.json;
 import util;
 
 /// User
@@ -22,7 +23,7 @@ public:
      */
 	static void register(string username, string password) {
 		if (username.length == 0 || password.length == 0) {
-			throw new Exception("username or password should not be length zero");
+			throw new Exception("(username > 0) && (password > 0)");
 		}
 		if (username in users) {
 			throw new Exception("username already used");
@@ -80,8 +81,8 @@ public:
 	}
 
 	/// called when socket received
-	void recv(string data) {
-		writeln("recv: " ~ data);
+	void recv(JSONValue data) {
+		writeln("recv: ", data);
 	}
 }
 
@@ -141,7 +142,11 @@ void main()
 					rmlist ~= i;
 					continue;
 				}
-				conn.recv(buf.asUTF.strip);
+				try {
+					auto json = parseJSON(buf.asUTF.strip);
+					conn.recv(json);
+				}
+				catch (JSONException) {}
 			}
 
 			if (! conn.socket.isAlive) {
