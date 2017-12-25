@@ -4,13 +4,59 @@ import util;
 
 /// User
 class User {
+private:
+	this() {}   /// constructor
 public:
 	static User[string] users;    /// all user list
+	static int[string] actives;   /// active user list
 	static int[string] waitings;  /// usernames who waiting for battle 
 
 	string username;   /// username[unique]
 	string password;   /// password
 	ulong rating;      /// rating
+	Connection connection;  /// connection
+
+	/**
+	 * Register new user with username and password
+     * Throws: Exception on username is not unique or username or password is empty
+     */
+	static void register(string username, string password) {
+		if (username.length == 0 || password.length == 0) {
+			throw new Exception("username or password should not be length zero");
+		}
+		if (username in users) {
+			throw new Exception("username already used");
+		}
+		auto user = new User();
+		user.username = username;
+		user.password = password;  // TODO: password encryption
+		user.rating = 0;
+		user.connection = null;
+		users[username] = user;
+	}
+
+	/**
+     * login by username and password
+	 * Throws: Exception on failed to login
+     */
+	static User login(Connection conn, string username, string password) {
+		if (username !in users || users[username].password != password) {
+			throw new Exception("login failed");
+		}
+		if (username in actives) {
+			throw new Exception("you already logged in");
+		}
+		auto user = users[username];
+		user.connection = conn;
+
+		actives[username] = 1;   // make user active
+		return user;
+	}
+
+	void logout() {
+		this.connection = null;
+		actives.remove(this.username);
+	}
 }
 
 /// TCP Connection
