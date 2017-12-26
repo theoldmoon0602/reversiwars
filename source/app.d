@@ -498,7 +498,7 @@ void main()
 	import core.time;
 
 	// load id
-	auto ids = DB.findAll("reversi", "log").map!(a => a["id"].as!long().value).array.dup.sort!"a > b";
+	auto ids = DB.findAll("reversi", "battle").map!(a => a["id"].as!long().value).array.dup.sort!"a > b";
 	if (ids.length > 0) {
 		Battle.nextId = ids[0]+1;
 	}
