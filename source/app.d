@@ -5,6 +5,8 @@ import std.random;
 import std.conv;
 import util;
 import reversi;
+import mondo;
+import bsond;
 
 class ReversiException : Exception
 {
@@ -13,14 +15,44 @@ class ReversiException : Exception
     }
 }
 
+class DB {
+public:
+	static Mongo mongo;
+	static Collection[string] cs;
+	static this() {
+		mongo = new Mongo("mongodb://localhost");
+	}
+	static void insertOrUpdate(string db, string collection, BO key, BO value) {
+		auto k = db~collection;
+		if (k !in cs) {
+			cs[k] = mongo[db][collection];
+		}
+		if (cs[k].count(key) > 0) {
+			cs[k].update(key,value);
+		}
+		else {
+			cs[k].insert(value);
+		}
+	}
+	static auto findAll(string db, string collection) {
+		auto k = db~collection;
+		if (k !in cs) {
+			cs[k] = mongo[db][collection];
+		}
+		return cs[k].find(Query.init());
+	}
+}
+
+
 /// Reversi Battle
 class Battle {
 public:
-	static ulong nextId = 0;  /// unique battle id
+	static long nextId = 0;  /// unique battle id
 	ReversiManager reversi;
-	ulong id;
+	long id;
 	User[] us;
 	ReversiUser[] ps;
+	bool isEnd;
 	this(User a, User b) {
 		this.id = nextId;
 		nextId++;
@@ -31,6 +63,8 @@ public:
 		}
 		this.ps = [new ReversiUser(Mark.BLACK), new ReversiUser(Mark.WHITE)];
 		this.reversi = new ReversiManager(ps[0], ps[1]);
+		this.isEnd = false;
+
 
 		start();
 	}
@@ -57,6 +91,8 @@ public:
 	}
 
 	void atGameEnd(ulong winner) {
+		if (isEnd) { return; }
+		isEnd = true;
 		auto loser = (winner + 1) % 2;
 		if (us[winner].rating > us[loser].rating) {
 			us[winner].rating += 1;
@@ -70,12 +106,17 @@ public:
 				us[loser].rating -= 1;
 			}
 		}
+		us[winner].save();
+		us[loser].save();
 	}
 
 	/**
      * turn action
      */
 	void doAct(User user, JSONValue action) {
+		import std.algorithm;
+		import std.array;
+
 		try {
 			auto turnP = this.ps[reversi.GetTurn()%2];
 			auto nextP = this.ps[(reversi.GetTurn()+1)%2];
@@ -87,11 +128,18 @@ public:
 				turnP.SetNextAction(NextAction.PutAt(Position(cast(int)x,cast(int)y)));
 				reversi.Next();
 
-				bool isGameEnd = false;
+				bool isGameEnd = reversi.GetBoard().IsGameEnd();
+				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()-1),
+						BO(
+						"id", this.id,
+						"turn", reversi.GetTurn()-1,
+						"action", "put",
+						"x", x, "y", y,
+						"isGameEnd", isGameEnd.to!string,
+						"board", reversi.GetBoard().IntArray().map!(x => (x == -1)?2:x).map!(to!string).array.join("")));
 				bool turnWin = false;
 				bool isDraw = false;
-				if (reversi.GetBoard().IsGameEnd()) {
-					isGameEnd = true;
+				if (isGameEnd) {
 					auto turnCount = reversi.GetBoard().Count(turnP.GetMark());
 					auto nextCount = reversi.GetBoard().Count(nextP.GetMark());
 					if (turnCount == nextCount) {
@@ -134,6 +182,15 @@ public:
 			else if (action["action"].str() == "pass" && reversi.GetBoard.ListupPuttables(turnP.GetMark()).length == 0) {
 				turnP.SetNextAction(NextAction.Pass());
 				reversi.Next();
+				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()-1),
+						BO(
+						"id", this.id,
+						"turn", reversi.GetTurn()-1,
+						"action", "pass",
+						"isGameEnd", "false",
+						"board", reversi.GetBoard().IntArray().map!(x => (x == -1)?2:x).map!(to!string).array.join("")
+						)
+				);
 
 				{
 					JSONValue json;
@@ -154,8 +211,13 @@ public:
 				throw new Exception("invalid action" ~ action.to!string);
 			}
 		}
-		catch (Exception e) {
-			writeln(e);
+		catch (ReversiException e) {
+			JSONValue json;
+			json["result"] = "false";
+			json["msg"] = e.msg;
+			user.connection.socket.emitln(json);
+		}
+		catch (JSONException e) {
 			JSONValue json;
 			json["result"] = "false";
 			json["msg"] = e.msg;
@@ -198,7 +260,7 @@ public:
 
 	string username;   /// username[unique]
 	string password;   /// password
-	ulong rating;      /// rating
+	long rating;      /// rating
 	Connection connection;  /// connection
 
 	/**
@@ -212,12 +274,10 @@ public:
 		if (username in users) {
 			throw new ReversiException("username already used");
 		}
-		auto user = new User();
-		user.username = username;
-		user.password = password;  // TODO: password encryption
-		user.rating = 0;
-		user.connection = null;
+		auto user = add(username, password, 0);
 		users[username] = user;
+
+		user.save();
 	}
 
 	/**
@@ -235,6 +295,17 @@ public:
 		user.connection = conn;
 
 		actives[username] = 1;   // make user active
+		return user;
+	}
+
+	static User add(string username, string password, long rating) {
+		if (username in users) { return null; }
+		auto user = new User();
+		user.username = username;
+		user.password = password;  // TODO: password encryption
+		user.rating = rating;
+		user.connection = null;
+		users[username] = user;
 		return user;
 	}
 
@@ -264,6 +335,11 @@ public:
 		if (this.username in actives) {
 			actives.remove(this.username);
 		}
+	}
+
+	void save() {
+		DB.insertOrUpdate("reversi", "user", BO("username", this.username),
+				BO("username", this.username, "password", this.password, "rating", this.rating));
 	}
 
 	void wait() {
@@ -368,7 +444,6 @@ public:
 					}
 					break;
 				case BATTLE:
-					writeln(data);
 					this.battle.doAct(user, data);
 					break;
 				case WAIT:
@@ -378,7 +453,13 @@ public:
 				}
 			}
 		}
-		catch (Exception e) {
+		catch (ReversiException e) {
+			JSONValue json;
+			json["result"] = "false";
+			json["msg"] = e.msg;
+			socket.emitln(json);
+		}
+		catch (JSONException e) {
 			JSONValue json;
 			json["result"] = "false";
 			json["msg"] = e.msg;
@@ -402,6 +483,21 @@ void main()
 	import std.stdio;
 	import std.string:strip;
 	import std.algorithm: map, filter, each, sort, remove;
+	import std.array;
+	import core.time;
+
+	// load id
+	auto ids = DB.findAll("reversi", "log").map!(a => a["id"].as!long().value).array.dup.sort!"a > b";
+	if (ids.length > 0) {
+		Battle.nextId = ids[0]+1;
+	}
+
+	// load users
+	auto users = DB.findAll("reversi", "user");
+	foreach (user; users) {
+		User.add(user["username"].as!string.value, user["password"].as!string.value, user["rating"].as!long.value);
+	}
+
 
 	// start tcp socket as server
 	auto server = new TcpSocket();
@@ -433,7 +529,9 @@ void main()
 
 		Connection[] nextConns = [];
 		if (rset.isSet(server)) {
-			auto conn = new Connection(server.accept());
+			auto sock = server.accept();
+			sock.setOption(SocketOptionLevel.SOCKET, SocketOption.RCVTIMEO, dur!"seconds"(10));
+			auto conn = new Connection(sock);
 			conn.started();
 			nextConns ~= conn;
 		}
