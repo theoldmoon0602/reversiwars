@@ -3,6 +3,7 @@ import std.stdio;
 import std.json;
 import std.random;
 import std.conv;
+import std.datetime;
 import util;
 import reversi;
 import mondo;
@@ -65,6 +66,8 @@ public:
 		this.reversi = new ReversiManager(ps[0], ps[1]);
 		this.isEnd = false;
 
+		DB.insertOrUpdate("reversi", "battle", BO("id", this.id),
+				BO("id", this.id, "user1", a.username, "user2", b.username));
 
 		start();
 	}
@@ -262,6 +265,7 @@ public:
 	string password;   /// password
 	long rating;      /// rating
 	Connection connection;  /// connection
+	long lastLogin;
 
 	/**
 	 * Register new user with username and password
@@ -291,8 +295,14 @@ public:
 		if (username in actives) {
 			throw new ReversiException("you already logged in");
 		}
+
 		auto user = users[username];
+		long curr = Clock.currStdTime();
+		if (user.lastLogin != 0 && dur!"hnsecs"(curr - user.lastLogin) < dur!"seconds"(10)) {
+			throw new ReversiException("1 hour > now - last login"); 
+		}
 		user.connection = conn;
+		user.lastLogin = curr;
 
 		actives[username] = 1;   // make user active
 		return user;
@@ -305,6 +315,7 @@ public:
 		user.password = password;  // TODO: password encryption
 		user.rating = rating;
 		user.connection = null;
+		user.lastLogin = 0;
 		users[username] = user;
 		return user;
 	}
