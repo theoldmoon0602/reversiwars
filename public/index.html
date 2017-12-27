@@ -121,7 +121,7 @@ var updateBoard = function (board, px, py) {
 	countBoard(board);
 }
 var loadUsers = function() {
-	fetch("//theoldmoon0602.tk:8889/api.php?users") 
+	fetch("/api.php?users") 
 		.then((res) => {return res.text(); })
 		.then((json) => {
 			json = JSON.parse(json);
@@ -134,7 +134,7 @@ var loadUsers = function() {
 		});
 }
 var loadBattles = function() {
-	fetch("//theoldmoon0602.tk:8889/api.php?battles") 
+	fetch("/api.php?battles") 
 		.then((res) => {return res.text(); })
 		.then((json) => {
 			json = JSON.parse(json);
@@ -165,7 +165,7 @@ var countBoard = function(board) {
 	document.getElementById("white").style.width = (white/(black+white))*100 + "%";
 }
 var loadBattle = function(battleId, user1, user2) {
-	fetch("//theoldmoon0602.tk:8889/api.php?battles") 
+	fetch("/api.php?battles") 
 		.then((res) => {return res.text(); })
 		.then((json) => {
 			json = JSON.parse(json);
@@ -188,7 +188,7 @@ var loadTurn = function(battleId, turn) {
 		turnzero(battleId);
 		return;
 	}
-	fetch("//theoldmoon0602.tk:8889/api.php?log&id="+battleId+"&turn="+turn) 
+	fetch("/api.php?log&id="+battleId+"&turn="+turn) 
 		.then((res) => {return res.text(); })
 		.then((json) => {
 			json = JSON.parse(json);

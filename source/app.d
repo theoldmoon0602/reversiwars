@@ -126,7 +126,7 @@ public:
 			auto turnP = this.ps[reversi.GetTurn()%2];
 			auto nextP = this.ps[(reversi.GetTurn()+1)%2];
 			auto nextUser = this.us[(reversi.GetTurn()+1)%2];
-			if (us[reversi.GetTurn()%2] !is user) { throw new Exception("not your turn"); }
+			if (us[reversi.GetTurn()%2] !is user) { throw new ReversiException("not your turn"); }
 			if (action["action"].str() == "put") {
 				auto x = action["pos"].array()[0].integer();
 				auto y = action["pos"].array()[1].integer();
@@ -212,7 +212,7 @@ public:
 				}
 			}
 			else {
-				throw new Exception("invalid action" ~ action.to!string);
+				throw new ReversiException("invalid action" ~ action.to!string);
 			}
 		}
 		catch (ReversiException e) {
@@ -340,7 +340,7 @@ public:
 		if (username in waitings) {
 			return users[username];
 		}
-		throw new Exception("that user is not on wait mode");
+		throw new ReversiException("that user is not on wait mode");
 	}
 
 	void logout() {
@@ -426,7 +426,7 @@ public:
 						this.user = User.login(this, username, password);
 					}
 					else {
-						throw new Exception("unknown action:" ~ data["action"].str());
+						throw new ReversiException("unknown action:" ~ data["action"].str());
 					}
 					auto waitings = User.getWaitings();
 					JSONValue users = JSONValue[].init;
@@ -455,7 +455,7 @@ public:
 						this.status = WAIT;
 					}
 					else {
-						throw new Exception("unknown action:" ~ data["action"].str());
+						throw new ReversiException("unknown action:" ~ data["action"].str());
 					}
 					break;
 				case BATTLE:
@@ -575,6 +575,9 @@ void main()
 					conn.recved(json);
 				}
 				catch (JSONException) {}
+				catch (Exception e) {
+					stderr.writeln(e);
+				}
 			}
 
 			// 生きてるsocketはここまでたどり着く
