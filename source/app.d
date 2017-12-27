@@ -345,6 +345,9 @@ public:
 	}
 
 	void logout() {
+		if (this.username in waitings) {
+			waitings.remove(this.username);
+		}
 		if (this.username in actives) {
 			actives.remove(this.username);
 		}
