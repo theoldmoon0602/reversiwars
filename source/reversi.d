@@ -1,3 +1,6 @@
+// オセロの管理をやってます
+
+
 enum Mark : int {
 	BLACK = 1,
 	WHITE = -1,
@@ -49,14 +52,12 @@ public:
 	NextAction GetNextAction(const ReversiBoard) pure const;
 }
 
-class ReversiUser : ReversiPlayer {
+class ReversiRandomPlayer : ReversiPlayer {
 private:
 	Mark mark;
-	NextAction nextAction;
 public:
 	this(Mark mark) pure nothrow @safe {
 		this.mark = mark;
-		this.nextAction = NextAction.Pass();
 	}
 	void SetMark(Mark mark) pure nothrow @safe {
 		this.mark = mark;
@@ -64,13 +65,37 @@ public:
 	Mark GetMark() pure const nothrow @safe {
 		return this.mark;
 	}
-	void SetNextAction(NextAction nextAction) {
-		this.nextAction = nextAction;
+	NextAction GetNextAction(const ReversiBoard board) pure const {
+		import std.random : choice;
+		auto puttables = board.ListupPuttables(mark);
+		if (puttables.length == 0) {
+			return NextAction.Pass();
+		}
+		return NextAction.PutAt(choice(puttables));
+	}
+}
+
+class RemotePlayer : ReversiPlayer {
+private:
+	Mark mark;
+	NextAction action;
+public:
+	this(Mark mark) pure nothrow @safe {
+		this.mark = mark;
+		this.action = NextAction.Pass();
+	}
+	void SetMark(Mark mark) pure nothrow @safe {
+		this.mark = mark;
+	}
+	Mark GetMark() pure const nothrow @safe {
+		return this.mark;
+	}
+	void SetNextAction(NextAction action) pure nothrow @safe {
+		this.action = action;
 	}
 	NextAction GetNextAction(const ReversiBoard board) pure const {
-		return nextAction;
+		return action;
 	}
-
 }
 
 class ReversiBoard {
@@ -80,9 +105,9 @@ public:
 	const int size = 8;
 	this() pure nothrow @safe {
 		this.board = new Mark[][](size,size);
-		for (int x = 0; x < size; x++) {
-			for (int y = 0; y < size; y++) {
-				this.board[x][y] = Mark.EMPTY;
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
+				this.board[y][x] = Mark.EMPTY;
 			}
 		}
 		this.board[3][3] = Mark.BLACK;
@@ -96,9 +121,9 @@ public:
 	}
 	this(int[] board) pure nothrow @safe {
 		this.board = new Mark[][](size,size);
-		for (int x = 0; x < size; x++) {
-			for (int y = 0; y < size; y++) {
-				this.board[x][y] = cast(Mark)board[x*8+y];
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
+				this.board[y][x] = cast(Mark)board[y*8+x];
 			}
 		}
 	}
@@ -106,15 +131,15 @@ public:
 	/// return specific position status of board
 	Mark At(int x, int y) pure nothrow const @safe {
 		if (0 <= x && x < this.size && 0 <= y && y < this.size) {
-			return board[x][y];
+			return board[y][x];
 		}
 		return Mark.INVALID;
 	}
 
 	int[] IntArray() pure nothrow const @safe {
 		int[] xs = [];
-		for (int x = 0; x < this.size; x++) {
-			for (int y = 0; y < this.size; y++) {
+		for (int y = 0; y < this.size; y++) {
+			for (int x = 0; x < this.size; x++) {
 				xs ~= this.At(x,y);
 			}
 		}
@@ -197,9 +222,9 @@ public:
 			throw new Exception("Position(%d, %d) is not puttable for %s".format(x,y, mark));
 		}
 		ReversiBoard copy = new ReversiBoard(this.board);
-		copy.board[x][y] = mark;
+		copy.board[y][x] = mark;
 		foreach (p; revs) {
-			copy.board[p.x][p.y] = mark;
+			copy.board[p.y][p.x] = mark;
 		}
 		return copy;
 	}
@@ -269,8 +294,8 @@ public:
 		if (ListupPuttables(Mark.BLACK).length == 0 && ListupPuttables(Mark.WHITE).length == 0)  {
 			return true;
 		}
-		for (int x = 0; x < this.size; x++) {
-			for (int y = 0; y < this.size; y++) {
+		for (int y = 0; y < this.size; y++) {
+			for (int x = 0; x < this.size; x++) {
 				if (this.At(x,y) == Mark.EMPTY) {
 					return false;
 				}
@@ -307,7 +332,7 @@ public:
 		this.turn ++;
 		this.turnPlayerIndex = (this.turnPlayerIndex+1)%2;
 	}
-	void Next() pure {
+	NextAction Next() pure {
 		auto nextAction = GetTurnPlayer().GetNextAction(this.board);
 		if (! nextAction.IsPass()) {
 			auto putAt = nextAction.GetPutAt();
@@ -316,9 +341,7 @@ public:
 		if (! this.board.IsGameEnd()) {
 			GoNextTurn();
 		}
-		else {
-			turn++;
-		}
+		return nextAction;
 	}
 	ReversiBoard GetBoard() pure nothrow @safe {
 		return this.board;
