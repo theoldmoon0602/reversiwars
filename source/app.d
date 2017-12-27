@@ -81,6 +81,7 @@ public:
 			json["result"] = "true";
 			json["first"] = "true";
 			json["mark"] = "black";
+			json["id"] = this.id;
 			us[0].connection.socket.emitln(json);
 		}
 
@@ -89,6 +90,7 @@ public:
 			json["result"] = "true";
 			json["first"] = "false";
 			json["mark"] = "white";
+			json["id"] = this.id;
 			us[1].connection.socket.emitln(json);
 		}
 	}
@@ -132,14 +134,14 @@ public:
 				reversi.Next();
 
 				bool isGameEnd = reversi.GetBoard().IsGameEnd();
-				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()-1),
+				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()),
 						BO(
 						"id", this.id,
-						"turn", reversi.GetTurn()-1,
+						"turn", reversi.GetTurn(),
 						"action", "put",
 						"x", x, "y", y,
 						"isGameEnd", isGameEnd.to!string,
-						"board", reversi.GetBoard().IntArray().map!(x => (x == -1)?2:x).map!(to!string).array.join("")));
+						"board", reversi.GetBoard().IntArray()));
 				bool turnWin = false;
 				bool isDraw = false;
 				if (isGameEnd) {
@@ -185,13 +187,13 @@ public:
 			else if (action["action"].str() == "pass" && reversi.GetBoard.ListupPuttables(turnP.GetMark()).length == 0) {
 				turnP.SetNextAction(NextAction.Pass());
 				reversi.Next();
-				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()-1),
+				DB.insertOrUpdate("reversi", "log", BO("id", this.id, "turn", reversi.GetTurn()),
 						BO(
 						"id", this.id,
-						"turn", reversi.GetTurn()-1,
+						"turn", reversi.GetTurn(),
 						"action", "pass",
 						"isGameEnd", "false",
-						"board", reversi.GetBoard().IntArray().map!(x => (x == -1)?2:x).map!(to!string).array.join("")
+						"board", reversi.GetBoard().IntArray()
 						)
 				);
 
