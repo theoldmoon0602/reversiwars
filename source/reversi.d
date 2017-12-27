@@ -85,10 +85,10 @@ public:
 				this.board[y][x] = Mark.EMPTY;
 			}
 		}
-		this.board[3][3] = Mark.BLACK;
-		this.board[3][4] = Mark.WHITE;
-		this.board[4][3] = Mark.WHITE;
-		this.board[4][4] = Mark.BLACK;
+		this.board[3][3] = Mark.WHITE;
+		this.board[3][4] = Mark.BLACK;
+		this.board[4][3] = Mark.BLACK;
+		this.board[4][4] = Mark.WHITE;
 	}
 	this(const(Mark[][]) board) pure nothrow @safe {
 		import std.conv : to;
