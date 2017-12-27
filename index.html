@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title></title>
+	<style>
+ul {
+	padding: 0;
+	list-style: none;
+}
+#battle,#battles,#users {
+	width: 100%;
+	border-collapse: collapse;
+}
+#battle td,#battles td,#users td {
+	text-align: center;
+}
+#battles tr {
+	cursor: pointer;
+}
+#battles tr:first-child,#users tr:first-child {
+	border-bottom: 2px solid #000;
+}
+#battles tr:nth-child(even),#users tr:nth-child(even) {
+	background-color: green;
+}
+#board {
+	background-color: black;
+	margin: auto;
+}
+#board td {
+	width: 40px;
+	height: 40px;
+	background-color: green;
+	background-size: 75%;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+.highlight {
+	background-color: yellow !important;
+}
+.black {
+	background-image: url('./black.png');
+}
+.white {
+	background-image: url('./white.png');
+}
+#container {
+	width: 600px;
+	margin: auto;
+}
+#next {
+	float:right;
+}
+#cursors img {
+	width: 100px;
+}
+#black {
+	border: 1px solid #000;
+	height: 1em;
+	box-sizing:border-box;
+	display: inline-block;
+	background-color: black;
+}
+#white {
+	box-sizing:border-box;
+	border: 1px solid #000;
+	height: 1em;
+	display: inline-block;
+	background-color: white;
+}
+	</style>
+</head>
+<body>
+	<div id="container">
+		<h1>ReversiWars Viewer</h1>
+		<table id="battle">
+			<tr><th>Battle</th><th>user1</th><th>user2</th><th>turn</th><th>black</th><th>white<th></tr>
+			<tr><td id="battle-id"></td><td id="user1"></td><td id="user2"></td><td id="turn"></td><td id="user1-n"></td><td id="user2-n"></td></tr>
+		</table>
+		<div id="graph"><span id="black"></span><span id="white"></span></div>
+		<table id="board">
+		</table>
+		<p id="action"></p>
+		<p id="isEnd"></p>
+		<div id="cursors">
+			<img src="./leftarrow.png" alt="<-" id="prev">
+			<img src="./rightarrow.png" alt="->" id="next">
+		</div>
+		<h2>Battles</h2>
+		<table id="battles">
+			<tr><th>Battle ID</th><th>user1(Black)</th><th>user2(White)</th></tr>
+		</table>
+		<h2>User Ranking</h2>
+		<table id="users">
+			<tr><th>username</th><th>rating</th></tr>
+		</table>
+	</div>
+<script>
+var updateBoard = function (board, px, py) {
+	var tbl = document.getElementById("board");
+	while (tbl.firstChild) { tbl.removeChild(tbl.firstChild); }
+	for (var x = 0; x < 8; x++) {
+		var tr = tbl.insertRow();
+		for (var y = 0; y < 8; y++) {
+			var td = tr.insertCell();
+			if (board[x*8+y] == 1) { //black
+				td.classList.add("black");
+			}
+			else if (board[x*8+y] == -1) { // white
+				td.classList.add("white");
+			}
+			else {
+				td.classList.add("empty");
+			}
+			if (px == x && py == y) {
+				td.classList.add("highlight");
+			}
+		}
+	}
+	countBoard(board);
+}
+var loadUsers = function() {
+	fetch("//theoldmoon0602.tk:8889/api.php?users") 
+		.then((res) => {return res.text(); })
+		.then((json) => {
+			json = JSON.parse(json);
+			var users = document.getElementById("users");
+			for (var i = 0; i < json.length; i++) {
+				var tr = users.insertRow();
+				tr.insertCell().textContent = json[i]["username"];
+				tr.insertCell().textContent = json[i]["rating"];
+			}
+		});
+}
+var loadBattles = function() {
+	fetch("//theoldmoon0602.tk:8889/api.php?battles") 
+		.then((res) => {return res.text(); })
+		.then((json) => {
+			json = JSON.parse(json);
+			var battles = document.getElementById("battles");
+			for (var i = 0; i < json.length; i++) {
+				var tr = battles.insertRow();
+				tr.onclick = (() => { var k = i; return () => loadBattle(json[k]["id"], json[k]["user1"], json[k]["user2"]); })();
+				tr.insertCell().textContent = json[i]["id"];
+				tr.insertCell().textContent = json[i]["user1"];
+				tr.insertCell().textContent = json[i]["user2"];
+			}
+		});
+}
+var initialBoard = function() {
+	var board = Array(64).fill(0);
+	board[8*3+3] = -1;
+	board[8*4+3] = 1;
+	board[8*3+4] = 1;
+	board[8*4+4] = -1;
+	return board;
+}
+var countBoard = function(board) {
+	var black = board.filter(e => e == 1).length;
+	var white = board.filter(e => e == -1).length;
+	document.getElementById("user1-n").textContent = black;
+	document.getElementById("user2-n").textContent = white;
+	document.getElementById("black").style.width = (black/(black+white))*100 + "%";
+	document.getElementById("white").style.width = (white/(black+white))*100 + "%";
+}
+var loadBattle = function(battleId, user1, user2) {
+	fetch("//theoldmoon0602.tk:8889/api.php?battles") 
+		.then((res) => {return res.text(); })
+		.then((json) => {
+			json = JSON.parse(json);
+			if ("error" in json) { throw new Error(json["error"]); }
+			document.getElementById("battle-id").textContent = battleId; 
+			document.getElementById("user1").textContent = user1;
+			document.getElementById("user2").textContent = user2;
+			document.getElementById("isEnd").textContent = "";
+			turnzero(battleId);
+		});
+}
+var turnzero = function(battleId) {
+	var board = initialBoard();
+	updateBoard(board, -1, -1);
+	setEvent(battleId, 0, false);
+	document.getElementById("turn").textContent = 0;
+}
+var loadTurn = function(battleId, turn) {
+	if (turn == 0) {
+		turnzero(battleId);
+		return;
+	}
+	fetch("//theoldmoon0602.tk:8889/api.php?log&id="+battleId+"&turn="+turn) 
+		.then((res) => {return res.text(); })
+		.then((json) => {
+			json = JSON.parse(json);
+			if ("error" in json) { throw new Error(json["error"]); }
+
+			document.getElementById("turn").textContent = turn;
+			document.getElementById("isEnd").textContent = (json["isGameEnd"]) ? "END": "";
+			setEvent(battleId, turn, json["isGameEnd"]);
+
+			if (json["action"] == "pass") {
+				document.getElementById("action").textContent = "pass";
+			}
+			else {
+				document.getElementById("action").textContent = "("+json["x"]+", "+json["y"]+")";
+				updateBoard(json["board"], json["x"], json["y"]);
+			}
+		});
+
+}
+var setEvent = function(battleId, turn, atend) {
+	if (turn != 0) {
+		var p = document.getElementById('prev');
+		p.onclick = (() => {return () => (loadTurn(battleId, turn-1));})();
+	}
+	if (!atend) {
+		var n = document.getElementById('next');
+		n.onclick = (() => {return () => (loadTurn(battleId, turn+1));})();
+	}
+
+	document.onkeydown = (function () {
+		if (turn == 0) {
+			return (e) => {
+				if (e.keyCode == 39) { loadTurn(battleId, turn+1) };
+			};
+		}
+		else if (atend) {
+			return (e) => {
+				if (e.keyCode == 37) { loadTurn(battleId, turn-1) };
+			};
+		}
+		else {
+			return (e) => {
+				if (e.keyCode == 39) { loadTurn(battleId, turn+1) };
+				if (e.keyCode == 37) { loadTurn(battleId, turn-1) };
+			};
+		}
+	})();
+}
+document.addEventListener("DOMContentLoaded", function(event) {
+	var px = -1, py = -1;
+	updateBoard(initialBoard(), px, py);
+	loadBattles();
+	loadUsers();
+});
+</script>
+</body>
+</html>

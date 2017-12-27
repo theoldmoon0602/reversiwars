@@ -182,7 +182,6 @@ public:
 					}
 					nextUser.connection.socket.emitln(json);
 				}
-
 			}
 			else if (action["action"].str() == "pass" && reversi.GetBoard.ListupPuttables(turnP.GetMark()).length == 0) {
 				turnP.SetNextAction(NextAction.Pass());
