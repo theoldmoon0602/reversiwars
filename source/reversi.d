@@ -316,6 +316,9 @@ public:
 		if (! this.board.IsGameEnd()) {
 			GoNextTurn();
 		}
+		else {
+			turn++;
+		}
 	}
 	ReversiBoard GetBoard() pure nothrow @safe {
 		return this.board;
