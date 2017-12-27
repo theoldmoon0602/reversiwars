@@ -304,7 +304,6 @@ public:
 		return this.turn;
 	}
 	void GoNextTurn() pure @safe {
-		this.turn ++;
 		this.turnPlayerIndex = (this.turnPlayerIndex+1)%2;
 	}
 	NextAction Next() pure {
@@ -316,6 +315,7 @@ public:
 		if (! this.board.IsGameEnd()) {
 			GoNextTurn();
 		}
+		this.turn ++;
 		return nextAction;
 	}
 	ReversiBoard GetBoard() pure nothrow @safe {
