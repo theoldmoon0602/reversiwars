@@ -100,14 +100,14 @@ ul {
 var updateBoard = function (board, px, py) {
 	var tbl = document.getElementById("board");
 	while (tbl.firstChild) { tbl.removeChild(tbl.firstChild); }
-	for (var x = 0; x < 8; x++) {
+	for (var y = 0; y < 8; y++) {
 		var tr = tbl.insertRow();
-		for (var y = 0; y < 8; y++) {
+		for (var x = 0; x < 8; x++) {
 			var td = tr.insertCell();
-			if (board[x*8+y] == 1) { //black
+			if (board[y*8+x] == 1) { //black
 				td.classList.add("black");
 			}
-			else if (board[x*8+y] == -1) { // white
+			else if (board[y*8+x] == -1) { // white
 				td.classList.add("white");
 			}
 			else {
