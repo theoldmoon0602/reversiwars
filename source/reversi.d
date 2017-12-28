@@ -1,3 +1,5 @@
+import reversiexception;
+
 enum Mark : int {
 	BLACK = 1,
 	WHITE = -1,
@@ -29,7 +31,7 @@ public:
 	}
 	Position GetPutAt() pure const @safe{
 		if (this.type != 0) {
-			throw new Exception("This action is not put, so couldn't get position where to put");
+			throw new ReversiException("This action is not put, so couldn't get position where to put");
 		}
 		return this.p;
 	}
@@ -194,7 +196,7 @@ public:
 		import std.format : format;
 		auto revs = ReversesWhenPut(x, y, mark);
 		if (revs.length == 0) {
-			throw new Exception("Position(%d, %d) is not puttable for %s".format(x,y, mark));
+			throw new ReversiException("Position(%d, %d) is not puttable for %s".format(x,y, mark));
 		}
 		ReversiBoard copy = new ReversiBoard(this.board);
 		copy.board[y][x] = mark;
