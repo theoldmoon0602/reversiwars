@@ -147,10 +147,10 @@ public:
 					}
 					else if (turnCount > nextCount) {
 						turnWin = true;
-						atGameEnd(reversi.GetTurn()%2);
+						atGameEnd((reversi.GetTurn()+1)%2);
 					}
 					else {
-						atGameEnd((reversi.GetTurn()+1)%2);
+						atGameEnd(reversi.GetTurn()%2);
 					}
 				}
 				
