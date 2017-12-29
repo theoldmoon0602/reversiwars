@@ -143,8 +143,8 @@ var loadBattles = function() {
 				var tr = battles.insertRow();
 				tr.onclick = (() => { var k = i; return () => loadBattle(json[k]["id"], json[k]["user1"], json[k]["user2"]); })();
 				tr.insertCell().textContent = json[i]["id"];
-				tr.insertCell().textContent = json[i]["user1"];
-				tr.insertCell().textContent = json[i]["user2"];
+				tr.insertCell().textContent = json[i]["user1"] + "(" + json[i]["black"] + ")" + ((json[i]["user1"] == json[i]["winner"]) ? " WIN!" : "");
+				tr.insertCell().textContent = json[i]["user2"] + "(" + json[i]["white"] + ")" + ((json[i]["user2"] == json[i]["winner"]) ? " WIN!" : "");
 			}
 		});
 }
@@ -174,7 +174,7 @@ var loadBattle = function(battleId, user1, user2) {
 			document.getElementById("user1").textContent = user1;
 			document.getElementById("user2").textContent = user2;
 			document.getElementById("isEnd").textContent = "";
-			turnzero(battleId);
+			loadTurn(battleId, 0);
 		});
 }
 var turnzero = function(battleId) {
@@ -184,6 +184,7 @@ var turnzero = function(battleId) {
 	document.getElementById("turn").textContent = 0;
 }
 var loadTurn = function(battleId, turn) {
+	history.replaceState('', '', '/?battleId=' + battleId + '&turn=' + turn);
 	if (turn == 0) {
 		turnzero(battleId);
 		return;
@@ -237,11 +238,28 @@ var setEvent = function(battleId, turn, atend) {
 		}
 	})();
 }
+var getUrlVars = function(){
+    var vars = {}; 
+    var param = location.search.substring(1).split('&');
+    for(var i = 0; i < param.length; i++) {
+        var keySearch = param[i].search(/=/);
+        var key = '';
+        if(keySearch != -1) key = param[i].slice(0, keySearch);
+        var val = param[i].slice(param[i].indexOf('=', 0) + 1);
+        if(key != '') vars[key] = decodeURI(val);
+    } 
+    return vars; 
+}
 document.addEventListener("DOMContentLoaded", function(event) {
 	var px = -1, py = -1;
 	updateBoard(initialBoard(), px, py);
 	loadBattles();
 	loadUsers();
+	var getParam = getUrlVars();
+	if (("battleId" in getParam) && ("turn" in getParam)) {
+		loadTurn(+getParam["battleId"], +getParam["turn"]);
+	}
+
 });
 </script>
 </body>

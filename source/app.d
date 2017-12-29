@@ -61,9 +61,6 @@ public:
 		this.reversi = new ReversiManager(ps[0], ps[1]);
 		this.isEnd = false;
 
-		DB.insertOrUpdate("reversi", "battle", BO("id", this.id),
-				BO("id", this.id, "user1", a.username, "user2", b.username));
-
 		start();
 	}
 
@@ -88,6 +85,7 @@ public:
 			json["id"] = this.id;
 			us[1].connection.socket.emitln(json);
 		}
+
 	}
 
 	void atGameEnd(ulong winner) {
@@ -108,12 +106,23 @@ public:
 		}
 		us[winner].save();
 		us[loser].save();
+
+		// must long not int
+		long black = reversi.GetBoard().Count(ps[0].GetMark());
+		long white = reversi.GetBoard().Count(ps[0].GetMark());
+
+		// suppressing unreachable error
+		auto poke = BO("id", this.id, "user1", us[0].username, "user2", us[1].username, "winner", us[winner].username,	"black", black);
+		poke.append("white", white);
+
+		DB.insertOrUpdate("reversi", "battle", BO("id", this.id), poke);
 	}
 
 	/**
      * turn action
      */
 	void doAct(User user, JSONValue action) {
+		if (isEnd) { return; }
 		import std.algorithm;
 		import std.array;
 

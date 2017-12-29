@@ -8,6 +8,9 @@ if (isset($_GET["battles"])) {
 			"id" => $battle->id,
 			"user1" => $battle->user1,
 			"user2" => $battle->user2,
+			"winner" => $battle->winner,
+			"black" => $battle->black,
+			"white" => $battle->white,
 		];
 	}
 }
