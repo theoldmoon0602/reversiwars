@@ -109,7 +109,7 @@ public:
 
 		// must long not int
 		long black = reversi.GetBoard().Count(ps[0].GetMark());
-		long white = reversi.GetBoard().Count(ps[0].GetMark());
+		long white = reversi.GetBoard().Count(ps[1].GetMark());
 
 		// suppressing unreachable error
 		auto poke = BO("id", this.id, "user1", us[0].username, "user2", us[1].username, "winner", us[winner].username,	"black", black);
